@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#050506" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="description" content="DARK SCHOOL — Legendary Edition. A 3D third-person horror game in the browser. 8 languages, 4 endings, 16 achievements, gamepad support and a photosensitivity safe mode." />
+  <title>DARK SCHOOL — Legendary Edition · 3D Horror</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&family=Special+Elite&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+  <!--
+    Import map: lets the raw source (index.html + style.css + game.js) run on any static host
+    (e.g. GitHub Pages without a build step). When you run `npm run build`, Vite bundles Three.js
+    into a single offline-capable index.html and this map is simply ignored.
+  -->
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+
+  <!-- Screen effects -->
+  <div id="fx" aria-hidden="true">
+    <div id="fx-vignette"></div>
+    <div id="fx-danger"></div>
+    <div id="fx-damage"></div>
+    <canvas id="fx-grain" width="192" height="108"></canvas>
+    <div id="fx-fade"></div>
+  </div>
+
+  <!-- ============ LOADING ============ -->
+  <section id="loading" class="screen active">
+    <div class="loading-box">
+      <h1 class="logo small">DARK <span>SCHOOL</span></h1>
+      <div class="bar"><i id="loading-bar"></i></div>
+      <p id="loading-text" data-i18n="loading">…</p>
+      <p id="loading-error" class="error hidden"></p>
+    </div>
+  </section>
+
+  <!-- ============ MAIN MENU ============ -->
+  <section id="menu" class="screen">
+    <div class="menu-inner">
+      <h1 class="logo">DARK <span>SCHOOL</span></h1>
+      <p class="tagline" data-i18n="tagline"></p>
+      <nav class="menu-list">
+        <button id="btn-continue" class="btn big" data-i18n="btn_continue"></button>
+        <button id="btn-new" class="btn big primary" data-i18n="btn_new"></button>
+        <button id="btn-settings" class="btn big" data-i18n="btn_settings"></button>
+        <button id="btn-archive" class="btn big" data-i18n="btn_archive"></button>
+        <button id="btn-controls" class="btn big" data-i18n="btn_controls"></button>
+        <div class="row-btns">
+          <button id="btn-lang" class="btn small" title="Language"></button>
+          <button id="btn-fullscreen" class="btn small" data-i18n="btn_fullscreen"></button>
+        </div>
+      </nav>
+      <p id="menu-endings" class="endings-note"></p>
+      <p class="edition" data-i18n="edition"></p>
+    </div>
+    <p class="credits">v2.1 LEGENDARY · Three.js · WebAudio · 100% procedural</p>
+  </section>
+
+  <!-- ============ PAUSE ============ -->
+  <section id="pause" class="screen modal">
+    <div class="panel narrow">
+      <h2 data-i18n="pause_title"></h2>
+      <div class="menu-list">
+        <button id="btn-resume" class="btn big primary" data-i18n="btn_resume"></button>
+        <button id="btn-pause-journal" class="btn big" data-i18n="btn_journal"></button>
+        <button id="btn-pause-settings" class="btn big" data-i18n="btn_settings"></button>
+        <button id="btn-pause-controls" class="btn big" data-i18n="btn_controls"></button>
+        <button id="btn-checkpoint" class="btn big" data-i18n="btn_checkpoint"></button>
+        <button id="btn-quit" class="btn big danger" data-i18n="btn_quit"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="settings" class="screen modal">
+    <div class="panel">
+      <h2 data-i18n="set_title"></h2>
+      <div class="settings-grid">
+        <h3 data-i18n="set_graphics"></h3>
+        <label class="row"><span data-i18n="set_quality"></span>
+          <select id="set-quality">
+            <option value="low" data-i18n="q_low"></option>
+            <option value="medium" data-i18n="q_med"></option>
+            <option value="high" data-i18n="q_high"></option>
+            <option value="ultra" data-i18n="q_ultra"></option>
+          </select></label>
+        <label class="row"><span data-i18n="set_shadow"></span>
+          <select id="set-shadow">
+            <option value="auto" data-i18n="sh_auto"></option>
+            <option value="0" data-i18n="sh_off"></option>
+            <option value="512" data-i18n="sh_low"></option>
+            <option value="1024" data-i18n="sh_med"></option>
+            <option value="2048" data-i18n="sh_high"></option>
+          </select></label>
+        <label class="row"><span data-i18n="set_res"></span><input type="range" id="set-res" min="40" max="100" step="5" /><output id="out-res"></output></label>
+        <label class="row"><span data-i18n="set_fov"></span><input type="range" id="set-fov" min="55" max="95" step="1" /><output id="out-fov"></output></label>
+        <label class="row check"><span data-i18n="set_autoq"></span><input type="checkbox" id="set-autoq" /></label>
+        <label class="row check"><span data-i18n="set_grain"></span><input type="checkbox" id="set-grain" /></label>
+        <label class="row check"><span data-i18n="set_safe"></span><input type="checkbox" id="set-safe" /></label>
+        <p class="hint" data-i18n="set_safe_hint"></p>
+        <label class="row check"><span data-i18n="set_fps"></span><input type="checkbox" id="set-fps" /></label>
+        <p class="hint" id="reload-hint" data-i18n="set_reload_hint"></p>
+
+        <h3 data-i18n="set_audio"></h3>
+        <label class="row"><span data-i18n="set_master"></span><input type="range" id="set-master" min="0" max="100" /></label>
+        <label class="row"><span data-i18n="set_music"></span><input type="range" id="set-music" min="0" max="100" /></label>
+        <label class="row"><span data-i18n="set_sfx"></span><input type="range" id="set-sfx" min="0" max="100" /></label>
+        <label class="row check"><span data-i18n="set_voice"></span><input type="checkbox" id="set-voice" /></label>
+
+        <h3 data-i18n="set_gameplay"></h3>
+        <label class="row"><span data-i18n="set_diff"></span>
+          <select id="set-diff">
+            <option value="easy" data-i18n="d_easy"></option>
+            <option value="normal" data-i18n="d_normal"></option>
+            <option value="hard" data-i18n="d_hard"></option>
+            <option value="legend" data-i18n="d_legend"></option>
+          </select></label>
+        <label class="row"><span data-i18n="set_sens"></span><input type="range" id="set-sens" min="20" max="250" /></label>
+        <label class="row check"><span data-i18n="set_invert"></span><input type="checkbox" id="set-invert" /></label>
+        <label class="row check"><span data-i18n="set_subs"></span><input type="checkbox" id="set-subs" /></label>
+        <label class="row check"><span data-i18n="set_touch"></span><input type="checkbox" id="set-touch" /></label>
+        <label class="row check"><span data-i18n="set_pad"></span><input type="checkbox" id="set-pad" /></label>
+        <label class="row"><span data-i18n="set_lang"></span><button id="set-lang" class="btn small"></button></label>
+        <div class="row"><span data-i18n="set_data"></span><button id="btn-erase" class="btn small danger" data-i18n="btn_erase"></button></div>
+      </div>
+      <button id="btn-settings-back" class="btn big" data-i18n="btn_back"></button>
+    </div>
+  </section>
+
+  <!-- ============ SAVE SLOTS ============ -->
+  <section id="slots" class="screen modal">
+    <div class="panel">
+      <h2 data-i18n="slots_title"></h2>
+      <p class="hint" data-i18n="slots_note"></p>
+      <div id="slots-list" class="slots-list"></div>
+      <button id="btn-slots-back" class="btn big" data-i18n="btn_back"></button>
+    </div>
+  </section>
+
+  <!-- ============ LANGUAGE PICKER ============ -->
+  <section id="language" class="screen modal">
+    <div class="panel">
+      <h2 data-i18n="lang_title"></h2>
+      <p class="hint" data-i18n="lang_note"></p>
+      <div id="lang-grid" class="lang-grid"></div>
+      <button id="btn-language-back" class="btn big" data-i18n="btn_back"></button>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ARCHIVE ============ -->
+  <section id="archive" class="screen modal">
+    <div class="panel wide">
+      <h2 data-i18n="archive_title"></h2>
+      <p id="archive-progress" class="hint"></p>
+      <h3 data-i18n="archive_relics"></h3>
+      <div id="archive-relics" class="relic-row"></div>
+      <h3 data-i18n="archive_endings"></h3>
+      <div id="archive-endings" class="ach-grid"></div>
+      <h3 data-i18n="archive_achievements"></h3>
+      <div id="archive-achievements" class="ach-grid"></div>
+      <button id="btn-archive-back" class="btn big" data-i18n="btn_back"></button>
+    </div>
+  </section>
+
+  <!-- ============ CONTROLS ============ -->
+  <section id="controls" class="screen modal">
+    <div class="panel">
+      <h2 data-i18n="ctl_title"></h2>
+      <div class="ctl-cols">
+        <div>
+          <h3>⌨️ <span data-i18n="ctl_pc"></span></h3>
+          <table class="ctl">
+            <tr><td><kbd>W A S D</kbd></td><td data-i18n="ctl_move"></td></tr>
+            <tr><td><kbd>🖱</kbd></td><td data-i18n="ctl_look"></td></tr>
+            <tr><td><kbd>Shift</kbd></td><td data-i18n="ctl_run"></td></tr>
+            <tr><td><kbd>C</kbd> / <kbd>Ctrl</kbd></td><td data-i18n="ctl_crouch"></td></tr>
+            <tr><td><kbd>Space</kbd></td><td data-i18n="ctl_jump"></td></tr>
+            <tr><td><kbd>E</kbd></td><td data-i18n="ctl_interact"></td></tr>
+            <tr><td><kbd>F</kbd></td><td data-i18n="ctl_light"></td></tr>
+            <tr><td><kbd>Q</kbd></td><td data-i18n="ctl_throw"></td></tr>
+            <tr><td><kbd>R</kbd></td><td data-i18n="ctl_barricade"></td></tr>
+            <tr><td><kbd>Tab</kbd> / <kbd>J</kbd></td><td data-i18n="ctl_journal"></td></tr>
+            <tr><td><kbd>M</kbd></td><td data-i18n="ctl_map"></td></tr>
+            <tr><td><kbd>Esc</kbd> / <kbd>P</kbd></td><td data-i18n="ctl_pause"></td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>🎮 <span data-i18n="ctl_pad"></span></h3>
+          <ul class="tips"><li data-i18n="ctl_pad1"></li><li data-i18n="ctl_pad2"></li></ul>
+          <h3>📱 <span data-i18n="ctl_mobile"></span></h3>
+          <ul class="tips">
+            <li data-i18n="ctl_m1"></li>
+            <li data-i18n="ctl_m2"></li>
+            <li data-i18n="ctl_m3"></li>
+          </ul>
+          <h3>💡 <span data-i18n="ctl_tips"></span></h3>
+          <ul class="tips">
+            <li data-i18n="tip1"></li>
+            <li data-i18n="tip2"></li>
+            <li data-i18n="tip3"></li>
+            <li data-i18n="tip4"></li>
+          </ul>
+        </div>
+      </div>
+      <button id="btn-controls-back" class="btn big" data-i18n="btn_back"></button>
+    </div>
+  </section>
+
+  <!-- ============ JOURNAL ============ -->
+  <section id="journal" class="screen modal">
+    <div class="panel wide">
+      <h2 data-i18n="jr_title"></h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="obj" data-i18n="jr_obj"></button>
+        <button class="tab" data-tab="notes" data-i18n="jr_notes"></button>
+        <button class="tab" data-tab="map" data-i18n="jr_map"></button>
+      </div>
+      <div id="tab-obj" class="tabpane active"></div>
+      <div id="tab-notes" class="tabpane"></div>
+      <div id="tab-map" class="tabpane"><canvas id="map-canvas" width="720" height="420"></canvas><p class="hint" data-i18n="map_hint"></p></div>
+      <button id="btn-journal-close" class="btn big" data-i18n="btn_close"></button>
+    </div>
+  </section>
+
+  <!-- ============ NOTE READER ============ -->
+  <section id="note" class="screen modal">
+    <div class="paper">
+      <h3 id="note-title"></h3>
+      <div id="note-body"></div>
+      <button id="btn-note-close" class="btn" data-i18n="btn_close"></button>
+    </div>
+  </section>
+
+  <!-- ============ KEYPAD ============ -->
+  <section id="keypad" class="screen modal">
+    <div class="keypad-box">
+      <h3 data-i18n="kp_title"></h3>
+      <div id="kp-display">----</div>
+      <div class="kp-grid" id="kp-grid"></div>
+      <p id="kp-msg" class="hint"></p>
+      <button id="btn-kp-close" class="btn" data-i18n="btn_close"></button>
+    </div>
+  </section>
+
+  <!-- ============ CHOICE ============ -->
+  <section id="choice" class="screen modal">
+    <div class="panel narrow">
+      <h2 id="choice-title"></h2>
+      <p id="choice-text"></p>
+      <div id="choice-buttons" class="menu-list"></div>
+    </div>
+  </section>
+
+  <!-- ============ GAME OVER ============ -->
+  <section id="gameover" class="screen modal dark">
+    <div class="panel narrow center">
+      <h2 class="blood" data-i18n="go_title"></h2>
+      <p id="go-text"></p>
+      <p id="go-tip" class="hint"></p>
+      <div class="menu-list">
+        <button id="btn-retry" class="btn big primary" data-i18n="btn_retry"></button>
+        <button id="btn-go-restart" class="btn big" data-i18n="btn_restart"></button>
+        <button id="btn-go-menu" class="btn big" data-i18n="btn_menu"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ENDING ============ -->
+  <section id="ending" class="screen modal dark">
+    <div class="panel center">
+      <p class="hint" data-i18n="end_label"></p>
+      <h2 id="end-title"></h2>
+      <p id="end-text" class="end-text"></p>
+      <div id="end-stats" class="stats"></div>
+      <p id="end-progress" class="hint"></p>
+      <div class="menu-list">
+        <button id="btn-end-again" class="btn big primary" data-i18n="btn_again"></button>
+        <button id="btn-end-menu" class="btn big" data-i18n="btn_menu"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INTRO CARD ============ -->
+  <section id="intro" class="screen dark">
+    <div class="intro-text">
+      <p id="intro-line1"></p>
+      <p id="intro-line2"></p>
+      <p id="intro-line3"></p>
+    </div>
+  </section>
+
+  <!-- ============ HUD ============ -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hud-bars">
+        <div class="meter hp"><span data-i18n="hp"></span><div class="track"><i id="bar-hp"></i></div></div>
+        <div class="meter st"><span data-i18n="stamina"></span><div class="track"><i id="bar-st"></i></div></div>
+        <div class="meter bat hidden" id="meter-bat"><span data-i18n="battery"></span><div class="track"><i id="bar-bat"></i></div></div>
+        <div class="meter san" id="meter-san"><span data-i18n="sanity"></span><div class="track"><i id="bar-san"></i></div></div>
+        <div id="safe-tag" class="safe-tag hidden" data-i18n="safe_here"></div>
+      </div>
+      <div class="hud-objective"><small data-i18n="objective"></small><b id="objective-text"></b></div>
+      <div class="hud-right">
+        <div id="phase-badge" class="safe-tag hidden"></div>
+        <div id="throw-icons"></div>
+        <div id="relic-icons"></div>
+        <div id="inv-icons"></div>
+        <div class="hud-btns">
+          <button id="btn-hud-journal" class="icon-btn" title="Journal">📖</button>
+          <button id="btn-hud-pause" class="icon-btn" title="Pause">⏸</button>
+        </div>
+        <div id="fps" class="hidden"></div>
+      </div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="prompt" class="hidden"><kbd id="prompt-key">E</kbd><span id="prompt-text"></span></div>
+    <div id="aware" class="hidden"><span data-i18n="aware"></span><div class="track"><i></i></div></div>
+    <div id="breath-box" class="hidden"><span id="breath-hint"></span><div class="track"><i id="bar-breath"></i></div></div>
+    <div id="fire-timer" class="hidden"></div>
+    <div id="subtitle"></div>
+    <div id="toasts"></div>
+    <div id="hide-overlay" class="hidden"><div class="slits"></div></div>
+    <div id="sanity-fx" class="hidden"></div>
+  </div>
+
+  <!-- ============ TOUCH CONTROLS ============ -->
+  <div id="touch" class="hidden">
+    <div id="look-zone"></div>
+    <div id="joy-zone"><div id="joy-base"><div id="joy-knob"></div></div></div>
+    <button class="tbtn" id="tb-act" data-i18n="tb_act"></button>
+    <button class="tbtn" id="tb-jump">⤒</button>
+    <button class="tbtn" id="tb-crouch">⤓</button>
+    <button class="tbtn" id="tb-run">⚡</button>
+    <button class="tbtn" id="tb-light">🔦</button>
+    <button class="tbtn" id="tb-throw">🎯</button>
+    <button class="tbtn" id="tb-barricade">🪑</button>
+    <button class="tbtn" id="tb-journal">📖</button>
+  </div>
+  <div id="rotate-warning" class="hidden"><div>📱↻<p data-i18n="rotate_msg"></p></div></div>
+  <noscript><p style="color:#fff;padding:2rem">JavaScript is required / يلزم تفعيل جافاسكربت</p></noscript>
+</div>
+<script type="module" src="./game.js"></script>
+</body>
+</html>

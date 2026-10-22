@@ -1,0 +1,59 @@
+{
+  "name": "dark-school",
+  "productName": "DARK SCHOOL",
+  "description": "DARK SCHOOL — a 3D third-person horror game",
+  "author": "Houssam dev",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "clsx": "2.1.1",
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "tailwind-merge": "3.4.0",
+    "tailwindcss": "4.1.17",
+    "three": "^0.186.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.2",
+    "vite-plugin-singlefile": "2.3.0"
+  },
+  "build": {
+    "appId": "com.houssamdev.darkschool",
+    "productName": "DARK SCHOOL",
+    "copyright": "Houssam dev",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["dist/**/*", "electron/**/*", "build/icon.png", "package.json"],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "DARK-SCHOOL-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "DARK-SCHOOL-Portable-${version}.${ext}"
+    }
+  }
+}
